@@ -1,0 +1,3 @@
+(executables
+  (names gw_original partial_matching sample)
+  (libraries gw_partial swc))

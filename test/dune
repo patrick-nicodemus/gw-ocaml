@@ -1,0 +1,5 @@
+(library
+ (name misctests)
+ (inline_tests)
+ (libraries core swc gw_partial)
+ (preprocess (pps ppx_inline_test)))
