@@ -1,3 +1,3 @@
 (library
  (name gw_partial)
- (libraries owl ppx_deriving optiml-transport))
+ (libraries owl ppx_deriving optiml-transport swc))
