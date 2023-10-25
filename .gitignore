@@ -1,2 +1,8 @@
 *~
 *#
+_build
+perf.data
+perf.data.old
+*.txt
+*.org
+data
