@@ -1,3 +1,12 @@
+-- This file implements algorithms from the paper "Scaling algorithms
+-- for unbalanced optimal transport"
+-- by CHIZAT, GABRIEL PEYR´E, BERNHARD SCHMITZER,
+-- AND FRANCOIS-XAVIER VIALARD
+-- and the paper
+-- "The Unbalanced Gromov Wasserstein Distance: Conic Formulation and Relaxation"
+-- by Thibault Séjourné, François-Xavier Vialard and
+-- Gabriel Peyré
+
 module common (M : real) = {
   import "lib/github.com/diku-dk/sorts/radix_sort"
   type t = M.t
@@ -37,54 +46,6 @@ module common (M : real) = {
   -- First dimension is number of points, second column is dimension.
   -- Each row is one point.
   def pdist [n][k] (x : [n][k]t) : [n][n]t = cdist_sq x x |> map (map M.sqrt)
-
-  -- def parallel_while 'a 'b [n] (update : a -> b -> a) (exit_condition : a -> bool)
-  --   (varying_inputs : [n]a) (constant_inputs : [n]b) : [n]a =
-  --   let (_, unsorted_results) = 
-  --     loop (remaining, done) = (zip3 (0..<n) varying_inputs constant_inputs, [])
-  --     while (length remaining) i64.> 0
-  --     do
-  --     let (rem_indices, rem_state, rem_constant) = unzip3 remaining in
-  --     -- Note that update can contain a for loop if desired.
-  --     let new = map2 update rem_state rem_constant
-  --     let finished = map exit_condition new in
-  --     let results = filter (\(a, _) -> a) (zip finished (zip rem_indices new))
-  -- 		    |> map (\a -> a.1) in
-  --     let next_inputs = filter (\(a,_)-> not a)
-  -- 			       (zip finished (zip3 rem_indices new rem_constant)) |>
-  -- 			map (\a -> a.1) in
-  --     ( next_inputs , done ++ results)
-  --   in
-  --   let (_, return) =
-  --     unzip (radix_sort_int_by_key (\a -> a.0) i64.num_bits i64.get_bit unsorted_results)
-  --   in return :> [n]a
-  --   parallel_while update_fn exit_condition
-
-  -- def parallel_while_test =
-  --   let update_fn a (_ : i64) = a M.* a in
-  --   let exit_condition a = a M.> (M.i64 100) in
-    
-  -- def parallel_while_extract 'a 'b 'c [n]
-  --   (update : a -> b -> a) (extract : a -> b -> c) (exit_condition : a -> bool)
-  --   (varying_inputs : [n]a) (constant_inputs : [n]b) : [n]c =
-  --   let (_, unsorted_results) = 
-  --     loop (remaining, done) = (zip3 (0..<n) varying_inputs constant_inputs, [])
-  --     while (length remaining) i64.> 0
-  --     do
-  --     let (rem_indices, rem_state, rem_constant) = unzip3 remaining in
-  --     -- Note that update can contain a for loop if desired.
-  --     let new = map2 update rem_state rem_constant
-  --     let finished = map exit_condition new in
-  --     let results = filter (\(a, _) -> a) (zip finished (zip3 rem_indices new rem_constant))
-  -- 		    |> map (\ (_,(i,a, b)) -> (i, extract a b)) in
-  --     let next_inputs = filter (\(a,_)-> not a)
-  -- 			       (zip finished (zip3 rem_indices new rem_constant)) |>
-  -- 			map (\a -> a.1) in
-  --     ( next_inputs , done ++ results)
-  --   in
-  --   let (_, return) =
-  --     unzip (radix_sort_int_by_key (\a -> a.0) i64.num_bits i64.get_bit unsorted_results)
-  --   in return :> [n]c
 
   def parallel_while_extract 'a 'b 'c [n]
     (update : a -> b -> a) (extract : a -> b -> c) (exit_condition : a -> bool)
@@ -140,8 +101,6 @@ module common (M : real) = {
 
   def KL2 [n][m] (p : [n][m]t) (q : [n][m]t) =
     map2 KL p q |> (M.sum)
-  -- def KL2 [n][m] (p : [n][m]t) (q : [n][m]t) =
-  --   map2 (map2 (\a b -> klu_thibsej a b)) p q |> map M.sum |> M.sum
 
   -- Identical to KLu2(P | \mu\otimes\nu) but with a different implementation
   -- that might be more performant.
@@ -175,6 +134,7 @@ module common (M : real) = {
   -- This is not identical to KL4, it adds a small fudge term to
   -- avoid having to deal with zeros.
   -- It should be, numerically, reasonably close to KL4.
+  -- Added for comparison with the original UGW paper.
   def KL4' pi gamma mu nu =
         let massp = map M.sum pi |> M.sum in
     let massq = map M.sum gamma |> M.sum in
@@ -196,10 +156,6 @@ module common (M : real) = {
 
 }
 
--- This file deals with algorithms from the paper "Scaling algorithms
--- for unbalanced optimal transport"
--- by CHIZAT, GABRIEL PEYR´E, BERNHARD SCHMITZER,
--- AND FRANCOIS-XAVIER VIALARD
 
 -- From page 22.
 module scaling_unbalanced (M : real) = {
@@ -464,16 +420,16 @@ module scaling_unbalanced (M : real) = {
   -- dropping varepsilon from the definition.
   def algo3 [n][m] (r : otp[n][m]) (params : param) =
     let c0 = map (map (M./ (M.neg r.eps))) r.C in
-    -- let _ = #[trace] map count_nan c0 in
+    let _ = #[trace] map count_nan c0 in
     -- let _ = #[trace] map (M.minimum) c0 in
-  -- let (cbar, u0, v0) =
+  let (cbar, u0, v0) =
   --   -- #[trace]
-  --   let (cbar, u0_neg, v0_neg) = dykstra_matrix c0 params.tol_dykstra in
+    let (cbar, u0_neg, v0_neg) = dykstra_matrix c0 params.tol_dykstra in
   --   let _ = #[trace] 123 in
   --   let _ = #[trace] M.maximum (map M.maximum cbar) in
   --   let _ = #[trace] M.minimum (map M.minimum cbar) in
-  --   (cbar, map (M.neg) u0_neg, map M.neg v0_neg)
-  let (cbar, u0, v0) = safe_for_exp c0 (M.i64 30)
+    (cbar, map (M.neg) u0_neg, map M.neg v0_neg)
+  -- let (cbar, u0, v0) = safe_for_exp c0 params.tol_dykstra
   in
   -- let _ = #[trace] map (M.minimum) cbar in
   -- let _ = #[trace] map (M.maximum) cbar in
@@ -693,7 +649,8 @@ module unbalanced_gw (M : real) = {
 
 
   -- This term describes the difference between the loss of the local linearization problem
-  -- generated by ll_cost_matrix', and the value of F(P,Q) +\varepsilon KL(P\otimes Q | (\mu\otimes\nu)^2 ).
+  -- generated by ll_cost_matrix', and the value of
+  -- F(P,Q) +\varepsilon KL(P\otimes Q | (\mu\otimes\nu)^2 ).
   -- Note that although p contains a field "C", the cost matrix,
   -- this does not play any role in the computation.
   def ll_error_term [n][m] Q (p :sinkhorn.otp[n][m]) =
@@ -783,7 +740,7 @@ module unbalanced_gw (M : real) = {
     let sumC' = map M.sum C' |> M.sum in
     let pi = map (map (M.* (M.sqrt (mass_gamma M./ sumC')))) C' in
     (u1, v1, pi, M.maximum (map2 ratio_err pi gamma))
-        
+
     def unbalanced_gw_parallel [k][n][m] rho1 rho2 eps
     (X: [k][n][n]t) (mu: [k][n]t) (Y: [k][m][m]t) (nu: [k][m]t)
     (gamma : [k][n][m]t) (max_cbar_val: t) iter_count tol_outerloop =
@@ -852,5 +809,5 @@ module unbalanced_gw64 = unbalanced_gw f64
 
 entry unbalanced_gw_total_cost = unbalanced_gw64.unbalanced_gw_total_cost
 entry unbalanced_gw_pairwise = unbalanced_gw64.unbalanced_gw_pairwise
--- entry unbalanced_gw_pairwise_v2 = unbalanced_gw64.unbalanced_gw_pairwise_v2
--- entry unbalanced_gw_parallel_while = unbalanced_gw64.parallel_while_test
+entry unbalanced_gw_pairwise_v2 = unbalanced_gw64.unbalanced_gw_pairwise_v2
+entry unbalanced_gw_parallel_while = unbalanced_gw64.parallel_while_test
