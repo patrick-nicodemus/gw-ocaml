@@ -1,5 +1,0 @@
-(library
-   (name swc)
-   (preprocess (pps ppx_deriving.show ppx_deriving.ord ppx_compare ppx_sexp_conv))
-   (libraries core core_unix core_unix.sys_unix owl)
-   (modules (:standard \ tree)))

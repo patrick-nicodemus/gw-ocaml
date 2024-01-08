@@ -1,15 +1,8 @@
-(rule
- (targets scaling_unbalanced.c scaling_unbalanced.h
-    scaling_unbalanced.ml scaling_unbalanced.mli
-    scaling_unbalanced.json)
-    (deps scaling_unbalanced.fut
-          lib/github.com/diku-dk/segmented/segmented.fut)
-     (action
-     (run futhark-bindgen run --backend multicore scaling_unbalanced.fut scaling_unbalanced.ml)))
-
 (library
  (name ugw_futhark)
  (flags :standard -warn-error -69-34)
- (libraries ppx_deriving owl npy core_unix core_unix.sys_unix ctypes ctypes.foreign)
+ (libraries ppx_deriving owl base npy ctypes ctypes.foreign)
  (library_flags -linkall -cclib -lpthread)
+ ; (library_flags -linkall)
+ ; (c_library_flags -lcuda -lcudart -lnvrtc -lm)
  (foreign_stubs (language c) (names scaling_unbalanced)))

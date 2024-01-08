@@ -1,43 +1,72 @@
-open Swc.Parse
-open Swc.Batch
+open Ugw_futhark
+open Ugw_futhark.Utilities
 
-let dir = Sys.argv.(1)    
+let () = Cli.get_inputs ()
 
-let neurons = read_dir swc_forest_filename dir
-
-let () = Core.Sequence.iter neurons ~f:(fun a ->  let _ = Swc.Swc_core.length a in ())
-
-
-
-(* let f neuron  = *)
-(*   let x = Unix.gettimeofday () in *)
-(*   let _ = NeuronTree.height neuron in *)
-(*   let y = Unix.gettimeofday () in *)
-(*   (y -. x) *)
-
-(* let hashtbl_seq = map_over_dir Read_swc.seq_of_swc *)
-(*         hash_of_seq dir *)
-(* let () = Core.Sequence.iter hashtbl_seq ~f:(fun a -> *)
-(*     let ell = Core.Hashtbl.keys a in *)
-(*     Printf.printf "%d\n" (List.hd ell)) *)
-
-(* let () = print_endline "Hello, World!" *)
-
-(* NeuronTree.height *)
-
-(* let x = Core.Sequence.fold map_seq ~f:(+.) ~init:0. *)
-(* let () = Printf.printf "%f\n" x *)
+let rho1 = !Cli.rho1
+let rho2 = !Cli.rho2
+let eps = !Cli.epsilon
+let file_dir = !Cli.ptcloud_dir
+let output_file = !Cli.output_file
 
 
-(* let () = Core.Sequence.iter map_seq ~f:(Printf.printf "%f\n") *)
-(* let () = Core.Sequence.iter map_seq ~f:(fun _ -> ()) *)
+let num_pt_clouds =
+  match !Cli.num_pt_clouds with
+  | Some n -> n
+  | None -> Array.length (Sys.readdir file_dir)
+(* let num_pt_clouds = 20 *)
+let ctx = Scaling_unbalanced.Context.v
+            ~debug:false ~log:false ~profile:false ~auto_sync:false ()
+let pt_cloud_array = read_npy_pt_clouds file_dir (!Cli.num_pt_clouds)
+let u = uniform 60 |> Scaling_unbalanced.Array_f64_1d.v ctx
+let t0 = Unix.gettimeofday ()
 
-(* let hashtbl_seq = map_over_dir Read_swc.list_of_swc *)
-(*         (Core.Hashtbl.of_alist_exn ~growth_allowed:true ~size:100 (module Core.Int)) dir *)
+(* let output = unbalanced_gw_pairwise_f64 ctx pt_cloud_array *)
+(*                { rho1; rho2; epsilon = eps; *)
+(*                  max_cbar_val = 30.; *)
+(*                  inner_count = 30; *)
+(*                  tol_outerloop = 0.00001; *)
+(*                } *)
+
+let output = unbalanced_gw_pairwise_f64 ctx pt_cloud_array
+               { rho1; rho2; epsilon = eps;
+                 exp_absorb_cutoff = 1e30;
+                 tol_dykstra = 30.;
+                 tol_sinkhorn = 0.001;
+                 tol_outerloop = 0.00001;
+               }
 
 
-(* let () = Core.Sequence.iter map_seq ~f:(fun a -> *)
-(*     match (Core.Map.min_elt a) with *)
-(*     | Some (k, _)-> Printf.printf "%d\n" k *)
-(*     | None -> print_endline "NULL\n") *)
+let () = Printf.printf "%f\n" (Unix.gettimeofday () -. t0)
 
+let ctr = ref 0
+
+let () =
+  let open Scaling_unbalanced in
+  for i = 0 to num_pt_clouds-1 do
+    for j = i + 1 to num_pt_clouds-1 do
+      let index = vectorform_coords ~n:num_pt_clouds ~i ~j in
+      while Float.is_nan (output.(index)) || output.(index) <= 0.0 do
+        let pt_cloud_1 = Array_f64_2d.v ctx
+                           (pdist
+                              (Bigarray.Genarray.slice_left pt_cloud_array [| i |] )) in
+        let pt_cloud_2 = Array_f64_2d.v ctx
+                           (pdist
+                              (Bigarray.Genarray.slice_left pt_cloud_array [| j |] )) in
+        let () = (output.(index) <-
+                    (unbalanced_gw_f64_increasing_eps
+                       ctx rho1 rho2 eps pt_cloud_1 u pt_cloud_2 u
+                       ~exp_absorb_cutoff:1.0e10
+                       ~tol_dykstra:8.0
+                       ~tol_sinkhorn:0.00001
+                       0.00001)) in
+        let () = ctr := !ctr + 1 in
+        let () = Array_f64_2d.free pt_cloud_1 in
+        let () = Array_f64_2d.free pt_cloud_2 in
+        ()
+        done
+    done
+  done
+
+let () = Printf.printf "%d\n" !ctr
+let () = write_to_file output_file output

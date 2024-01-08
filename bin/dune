@@ -1,5 +1,5 @@
-(executable
- (public_name gw_partial)
- (name main)
- (libraries base stdio gw_partial swc npy ugw_futhark)
- (modes byte exe))
+(executables
+ (public_names gw_partial gw_simple)
+ (names main simple)
+ (libraries ugw_futhark)
+ (modes exe))

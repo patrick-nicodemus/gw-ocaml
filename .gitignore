@@ -6,3 +6,4 @@ perf.data.old
 *.txt
 *.org
 data
+futhark/lib
