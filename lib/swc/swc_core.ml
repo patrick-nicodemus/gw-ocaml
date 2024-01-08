@@ -115,10 +115,9 @@ let fold (f : 'a -> 'a list -> 'b list -> 'b) (t : 'a tree) =
    4. Build a third map (???) which associates to each node in the list its set of of actual children.
 *)
 
-
 type child_index = Int.Set.t Int.Map.t
 
-let update_child_index (record : node) (child_index_table : child_index) =
+let update_child_index record child_index_table =
   let map1 = Map.change child_index_table record.id ~f:(function
       | Some value -> Some value
       | None -> Some Int.Set.empty) in

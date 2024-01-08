@@ -1,3 +1,3 @@
 (library
  (name gw_partial)
- (libraries owl ppx_deriving optiml-transport swc))
+ (libraries owl ppx_deriving optiml-transport swc pyml ctypes ctypes.foreign))

@@ -11,7 +11,7 @@ doc: "https://cajal.readthedocs.io/en/latest/"
 bug-reports: "https://github.com/CamaraLab/CAJAL/issues"
 depends: [
   "ocaml"
-  "dune" {>= "3.10"}
+  "dune" {>= "3.12"}
   "owl"
   "odoc" {with-doc}
 ]

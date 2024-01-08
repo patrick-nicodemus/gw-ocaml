@@ -3,8 +3,6 @@ module common (M : real) = {
   type t = M.t
   def zero = M.i64 0
   def one = M.i64 1
-  -- def pow a b = M.exp (b M.* (M.log a))
-  -- pow is **.
 
   def scale (v : []t) (a :t) = map (M.* a) v
   def divv (v : []t) (a : t) = map (M./ a) v
@@ -19,15 +17,14 @@ module common (M : real) = {
   def err v v' = max_abs (map2 (M.-) v v')
   def ratio_err v v' = map2 (M./) v v' |> map (M.- one) |> max_abs
   def frobenius P Q = map2 dot P Q |> M.sum
-  -- this is just called "maximum"
-  -- def max1 = reduce M.max zero
-  
-  -- def sum = reduce (M.+) zero
   def sum_rows = map M.sum
   def avg [k] (a: [k](M.t)) = M.sum a M./ (M.i64 k)
   def sum_cols m = sum_rows (transpose m)
   def tensor [n] [m] (u : [n]t) (v : [m]t) : [n][m]t = map (scale v) u
   def replicate 'a (n : i64) (x : a) : [n]a = map (\_ -> x) (0..<n) 
+
+  -- Given two vectors of points, x and y, compute the matrix of pairwise
+  -- *squared* distances d(x_i,y_j) in Euclidean space.
   -- First dimension is number of points, second column is dimension.
   -- Each row is one point.
   def cdist_sq [n][m][k] (x : [n][k]M.t) (y : [m][k]M.t) : [n][m]M.t =
@@ -36,31 +33,93 @@ module common (M : real) = {
       dot z z
     in
     map (\xi -> map (sqdist xi) y) x
+
   -- First dimension is number of points, second column is dimension.
   -- Each row is one point.
   def pdist [n][k] (x : [n][k]t) : [n][n]t = cdist_sq x x |> map (map M.sqrt)
 
-  def parallel_while 'a 'b [n] (update : a -> b -> a) (exit_condition : a -> bool)
-    (varying_inputs : [n]a) (constant_inputs : [n]b) : [n]a =
-    let (_, unsorted_results) = 
-      loop (remaining, done) = (zip3 (0..<n) varying_inputs constant_inputs, [])
-      while (length remaining) i64.> 0
-      do
-      let (rem_indices, rem_state, rem_constant) = unzip3 remaining in
-      -- Note that update can contain a for loop if desired.
-      let new = map2 update rem_state rem_constant
-      let finished = map exit_condition new in
-      let results = filter (\(a, _) -> a) (zip finished (zip rem_indices new))
-		    |> map (\a -> a.1) in
-      let next_inputs = filter (\(a,_)-> not a)
-			       (zip finished (zip3 rem_indices new rem_constant)) |>
-			map (\a -> a.1) in
-      ( next_inputs , done ++ results)
-    in
-    let (_, return) =
-      unzip (radix_sort_int_by_key (\a -> a.0) i64.num_bits i64.get_bit unsorted_results)
-    in return :> [n]a
+  -- def parallel_while 'a 'b [n] (update : a -> b -> a) (exit_condition : a -> bool)
+  --   (varying_inputs : [n]a) (constant_inputs : [n]b) : [n]a =
+  --   let (_, unsorted_results) = 
+  --     loop (remaining, done) = (zip3 (0..<n) varying_inputs constant_inputs, [])
+  --     while (length remaining) i64.> 0
+  --     do
+  --     let (rem_indices, rem_state, rem_constant) = unzip3 remaining in
+  --     -- Note that update can contain a for loop if desired.
+  --     let new = map2 update rem_state rem_constant
+  --     let finished = map exit_condition new in
+  --     let results = filter (\(a, _) -> a) (zip finished (zip rem_indices new))
+  -- 		    |> map (\a -> a.1) in
+  --     let next_inputs = filter (\(a,_)-> not a)
+  -- 			       (zip finished (zip3 rem_indices new rem_constant)) |>
+  -- 			map (\a -> a.1) in
+  --     ( next_inputs , done ++ results)
+  --   in
+  --   let (_, return) =
+  --     unzip (radix_sort_int_by_key (\a -> a.0) i64.num_bits i64.get_bit unsorted_results)
+  --   in return :> [n]a
+  --   parallel_while update_fn exit_condition
 
+  -- def parallel_while_test =
+  --   let update_fn a (_ : i64) = a M.* a in
+  --   let exit_condition a = a M.> (M.i64 100) in
+    
+  -- def parallel_while_extract 'a 'b 'c [n]
+  --   (update : a -> b -> a) (extract : a -> b -> c) (exit_condition : a -> bool)
+  --   (varying_inputs : [n]a) (constant_inputs : [n]b) : [n]c =
+  --   let (_, unsorted_results) = 
+  --     loop (remaining, done) = (zip3 (0..<n) varying_inputs constant_inputs, [])
+  --     while (length remaining) i64.> 0
+  --     do
+  --     let (rem_indices, rem_state, rem_constant) = unzip3 remaining in
+  --     -- Note that update can contain a for loop if desired.
+  --     let new = map2 update rem_state rem_constant
+  --     let finished = map exit_condition new in
+  --     let results = filter (\(a, _) -> a) (zip finished (zip3 rem_indices new rem_constant))
+  -- 		    |> map (\ (_,(i,a, b)) -> (i, extract a b)) in
+  --     let next_inputs = filter (\(a,_)-> not a)
+  -- 			       (zip finished (zip3 rem_indices new rem_constant)) |>
+  -- 			map (\a -> a.1) in
+  --     ( next_inputs , done ++ results)
+  --   in
+  --   let (_, return) =
+  --     unzip (radix_sort_int_by_key (\a -> a.0) i64.num_bits i64.get_bit unsorted_results)
+  --   in return :> [n]c
+
+  def parallel_while_extract 'a 'b 'c [n]
+    (update : a -> b -> a) (extract : a -> b -> c) (exit_condition : a -> bool)
+    (varying_inputs : [n]a) (constant_inputs : [n]b) : [n]c =
+    let (_, outputs) =
+    loop ((p, outputs) : ([](i64,a), *[n]c)) =
+      (zip (0..<n) varying_inputs, map2 extract varying_inputs constant_inputs)
+    while length p > 0 do
+    let (remaining_indices, remaining_varying_inputs) = unzip p in
+    let remaining_constants = (map (\i -> constant_inputs[i]) remaining_indices)
+    -- Note that update can contain a for loop if desired.    
+    let new = map2 update
+		   remaining_varying_inputs
+		   remaining_constants in
+    let finished = map exit_condition new in
+    let results = filter (\(a,_) -> a)
+			 (zip finished (zip3 remaining_indices new remaining_constants))
+		  |> map (\ (_,(i,a, b)) -> (i, extract a b)) in
+    let outputs =
+      let (is, cs) = unzip results in
+      scatter outputs is cs
+    in
+    let next_inputs : [](i64, a) = filter (\(a,_)-> not a)
+			     (zip finished (zip remaining_indices new)) |>
+			map (\a -> a.1) in
+    (next_inputs, outputs)
+    in outputs
+
+  def parallel_while_test =
+    let update_fn a (_ : i64) = a M.* a in
+    let extract a _ = a in
+    let exit_condition a = a M.> (M.i64 100) in
+    parallel_while_extract update_fn extract exit_condition
+
+      
   -- klu is "un-normalized" or "unbiased", note the lack of -1 or + y.
   def klu x y = if x M.== zero then zero else x M.* M.log (x M./ y)
   -- KLu is the "un-normalized" KL divergence. 
@@ -345,23 +404,22 @@ module scaling_unbalanced (M : real) = {
       if any (M.>= exp_absorb_cutoff) st.abar ||
 	 any (M.<= M.recip exp_absorb_cutoff) st.abar then
 	matrix_rescale exp_absorb_cutoff (M.recip exp_absorb_cutoff) st.abar st.ubar st.Kbar
+	|> manifest
       else
       -- let _ = #[trace] count_nan2d st.Kbar in
-	(st.abar, st.ubar, st.Kbar)
+	(st.abar, st.ubar, st.Kbar) |> manifest
     in
     -- let _ = if any (M.== zero) st.bbar then #[trace] 1234567 else 0 in
     let (bbar_n, vbar_n, kbar_n) = 
       if any (M.>= exp_absorb_cutoff) st.bbar ||
 	 any (M.<= M.recip exp_absorb_cutoff) st.bbar then
       let (bbar2, vbar2, kbar2t) =
-	matrix_rescale exp_absorb_cutoff (M.recip exp_absorb_cutoff) st.bbar st.vbar (transpose kbar_n0)
+	matrix_rescale exp_absorb_cutoff (M.recip exp_absorb_cutoff) st.bbar st.vbar
+		       (transpose kbar_n0)
       in
-      -- let _ = #[trace] count_nan2d kbar2t in
-
-      (bbar2, vbar2, transpose kbar2t)
+      (bbar2, vbar2, transpose kbar2t) |> manifest
       else
-
-	(st.bbar, st.vbar, kbar_n0)
+	(st.bbar, st.vbar, kbar_n0) |> manifest
     in
     { abar = abar_n, ubar = ubar_n, Kbar = kbar_n, bbar = bbar_n, vbar = vbar_n }
 
@@ -491,7 +549,7 @@ module scaling_unbalanced (M : real) = {
   -- -- The columns of c0_ij are *not* guaranteed to be within tol.
   -- let kbar = map (map (M.exp)) cbar in
 
-  def prox_div_strict_s p s eps = p
+  def prox_div_strict_s p _ _ = p
   def prox_div_KLrho_s lambda p s eps =
     let c1 = eps M./ (lambda M.+ eps) in
     let c2 = lambda M./ (lambda M.+ eps) in
@@ -499,7 +557,7 @@ module scaling_unbalanced (M : real) = {
     (map (\x -> x M.** c1) s)
     (map (\x -> x M.** c2) p)
 
-  def prox_div_strict_su p s u eps = map2 (M./) p s
+  def prox_div_strict_su p s _ _ = map2 (M./) p s
   def prox_div_KLrho_su lambda p s u eps =
     let c1 = lambda M./(lambda M.+ eps) in
     let c2 = M.neg (lambda M.+ eps) in
@@ -729,18 +787,16 @@ module unbalanced_gw (M : real) = {
     def unbalanced_gw_parallel [k][n][m] rho1 rho2 eps
     (X: [k][n][n]t) (mu: [k][n]t) (Y: [k][m][m]t) (nu: [k][m]t)
     (gamma : [k][n][m]t) (max_cbar_val: t) iter_count tol_outerloop =
-      let results = 
-	let const_data : ([]problem_data[n][m]) =
-	  map4 (\X mu Y nu -> { X, mu, Y, nu, rho1, rho2, eps }) X mu Y nu in
-	let update = ugw_descent_step_parallel iter_count max_cbar_val in
-	let variable_data =
-	  map (\a -> (replicate n (M.i64 0), replicate m (M.i64 0), a, (M.i64 1))) gamma
-	in
-	let exit_condition a = a.3 M.< tol_outerloop in
-	parallel_while update exit_condition variable_data const_data
+      let const_data : ([]problem_data[n][m]) =
+	map4 (\X mu Y nu -> { X, mu, Y, nu, rho1, rho2, eps }) X mu Y nu in
+      let update = ugw_descent_step_parallel iter_count max_cbar_val in
+      let variable_data =
+	map (\a -> (replicate n (M.i64 0), replicate m (M.i64 0), a, (M.i64 1))) gamma
       in
-      let P = map (\a -> a.2) results in
-      map5 (UGW_cost_arr eps rho1 rho2) X mu Y nu P
+      let exit_condition a = a.3 M.< tol_outerloop in
+      let extract (_, _, pi, _) {X, mu, Y, nu, rho1, rho2, eps} =
+	UGW_cost_arr eps rho1 rho2 X mu Y nu pi in
+      parallel_while_extract update extract exit_condition variable_data const_data
 
    def unbalanced_gw_init [n][m] rho1 rho2 eps X mu Y nu init params tol_outerloop =
     let (u0, v0, p0) =
@@ -748,20 +804,17 @@ module unbalanced_gw (M : real) = {
     let update (u: [n]t) (v:[m]t) (p: [n][m]t) : ([n]t, [m]t, [n][m]t) =
       unbalanced_gw_descent_step rho1 rho2 eps X mu Y nu u v p params
     in
-    -- let _ =
-    --   #[trace] map count_nan p0 in
     loop (c0 : [n][m]t, u :[n]t, v:[m]t, c1:[n][m]t) = (init, u0, v0, p0)
     while any (M.>= tol_outerloop) (map2 err c0 c1)
     do
-    -- let _ = #[trace] 444 in
     let (u', v', c2) = update u v c1 in
-    -- let _ =  #[trace] Feps X Y c1 c2 mu nu rho1 rho2 eps in
     (c1, u', v', c2)
 
   def unbalanced_gw rho1 rho2 eps X mu Y nu =
     unbalanced_gw_init rho1 rho2 eps X mu Y nu (tensor mu nu)
 
-  def unbalanced_gw_total_cost [n][m] rho1 rho2 eps (X : [n][n]t) mu (Y : [m][m]t) nu exp_absorb_cutoff tol_dykstra tol_sinkhorn tol_outerloop =
+  def unbalanced_gw_total_cost [n][m] rho1 rho2 eps (X : [n][n]t) mu (Y : [m][m]t) nu
+    exp_absorb_cutoff tol_dykstra tol_sinkhorn tol_outerloop =
     let (_, _, _, P) =
       unbalanced_gw rho1 rho2 eps X mu Y nu
 		    {exp_absorb_cutoff, tol_dykstra, tol_sinkhorn} tol_outerloop
@@ -799,4 +852,5 @@ module unbalanced_gw64 = unbalanced_gw f64
 
 entry unbalanced_gw_total_cost = unbalanced_gw64.unbalanced_gw_total_cost
 entry unbalanced_gw_pairwise = unbalanced_gw64.unbalanced_gw_pairwise
-entry unbalanced_gw_pairwise_v2 = unbalanced_gw64.unbalanced_gw_pairwise_v2
+-- entry unbalanced_gw_pairwise_v2 = unbalanced_gw64.unbalanced_gw_pairwise_v2
+-- entry unbalanced_gw_parallel_while = unbalanced_gw64.parallel_while_test
