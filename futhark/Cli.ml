@@ -15,7 +15,7 @@ let speclist =
     ("-rho2", Arg.Set_float rho2, "Set KL divergence penalty coefficient for second space");
     ("-eps", Arg.Set_float epsilon, "Set entropy coefficient for regularization");
     ("-n", Arg.Int (fun n -> num_pt_clouds := Some n) , "Set number of files to be processed");
-    ("-i", Arg.Set_string output_file, "Set input directory name");
+    ("-i", Arg.Set_string ptcloud_dir, "Set input directory name");
     ("-o", Arg.Set_string output_file, "Set output file name");
   ]
 

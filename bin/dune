@@ -1,5 +1,5 @@
 (executables
- (public_names gw_partial gw_simple)
- (names main simple)
+ (public_names unbalanced_gw)
+ (names main)
  (libraries ugw_futhark)
- (modes exe))
+ (modes byte exe))

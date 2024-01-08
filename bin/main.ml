@@ -9,7 +9,6 @@ let eps = !Cli.epsilon
 let file_dir = !Cli.ptcloud_dir
 let output_file = !Cli.output_file
 
-
 let num_pt_clouds =
   match !Cli.num_pt_clouds with
   | Some n -> n

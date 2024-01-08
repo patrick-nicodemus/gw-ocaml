@@ -132,7 +132,6 @@ let unbalanced_gw_f64_increasing_eps ctx rho1 rho2 (eps: float)
     let result = Scaling_unbalanced.unbalanced_gw_total_cost
                    ctx rho1 rho2 eps x mu y nu exp_absorb_cutoff
                    tol_dykstra tol_sinkhorn tol_outerloop in
-    Printf.printf "%f\n" eps;
         if Float.is_nan result || result <= 0.0 then unbalanced_gw_f64_helper ctx rho1 rho2 (eps *. 1.04) x mu y nu ~exp_absorb_cutoff ~tol_dykstra ~tol_sinkhorn tol_outerloop
     else result
   in
