@@ -1,5 +1,7 @@
 open Bigarray
 
+module Utilities (Scaling_unbalanced : Scaling_unbalanced.Scaling_unbalanced) = struct
+
 let k_of_i ~n ~i =
   n * i - (i * (i+1))/2
 
@@ -107,20 +109,33 @@ let write_to_file output_filename arr =
   ;
     close_out out_channel
 
+let dist v1 v2 =
+  let open Genarray in
+  assert (num_dims v1 = 1);
+  assert (num_dims v2 = 1);
+  assert (nth_dim v1 0 = nth_dim v2 0);
+  let d = ref 0.0 in
+  for i = 0 to (nth_dim v1 0) - 1 do
+    let a = (get v1 [| i |] -. (get v2 [| i |])) in
+    d := !d +. (a *. a)
+  done;
+  Float.sqrt !d
+
 let pdist m =
-  let open Owl_dense_matrix_d in
-  let rnm = (row_num m) in
-  let a = zeros rnm rnm in
+  let open Genarray in 
+  let rnm = nth_dim m 0 in
+  let a = create Float64 c_layout [| rnm; rnm |] in
+  for i = 0 to rnm - 1 do
+    set a [| i; i |] 0.0
+  done;
   for i = 0 to rnm - 1 do
     for j = i + 1 to rnm - 1 do
-      set a i j (l2norm' (sub (row m i ) (row m j)))
+      set a [| i; j |] (dist (slice_left m [| i |]) (slice_left m [| j |]))
       done
-      (* set a i j (l2norm' (sub (row m i) (row m j))) *)
   done;
     for i = 0 to rnm - 1 do
       for j = 0 to i - 1 do
-        set a i j (get a j i)
-        (* set a i j (get a j i) *)
+        set a [| i ; j |] (get a [| j ; i |])
       done
     done;
     a;;
@@ -152,3 +167,4 @@ let unbalanced_gw_f64_ptclouds ctx filename1 filename2 (params : params) =
       params.tol_outerloop
   in
   return
+end

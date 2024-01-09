@@ -1,8 +1,5 @@
 (library
  (name ugw_futhark)
  (flags :standard -warn-error -69-34)
- (libraries ppx_deriving owl base npy ctypes ctypes.foreign)
- (library_flags -linkall -cclib -lpthread)
- ; (library_flags -linkall)
- ; (c_library_flags -lcuda -lcudart -lnvrtc -lm)
- (foreign_stubs (language c) (names scaling_unbalanced)))
+ (libraries ppx_deriving base npy ctypes ctypes.foreign)
+ (library_flags -linkall -cclib -lpthread))

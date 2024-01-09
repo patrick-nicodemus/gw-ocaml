@@ -1,0 +1,7 @@
+(library
+ (name scaling_unbalanced_opencl)
+ (flags :standard -w -69-34)
+ (libraries ctypes ctypes.foreign)
+ (library_flags -linkall -cclib -lOpenCL)
+ (c_library_flags -lOpenCL)
+ (foreign_stubs (language c) (names scaling_unbalanced_opencl)))

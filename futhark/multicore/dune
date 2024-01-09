@@ -1,0 +1,6 @@
+(library
+ (name scaling_unbalanced_multicore)
+ (flags :standard -warn-error -69-34)
+ (libraries ctypes ctypes.foreign)
+ (library_flags -linkall -cclib -lpthread)
+ (foreign_stubs (language c) (names scaling_unbalanced_multicore)))

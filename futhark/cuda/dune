@@ -1,0 +1,7 @@
+(library
+ (name scaling_unbalanced_cuda)
+ (flags :standard -w -69-34)
+ (libraries ctypes ctypes.foreign)
+ (library_flags -linkall)
+ (c_library_flags -lcuda -lcudart -lnvrtc -lm)
+ (foreign_stubs (language c) (names scaling_unbalanced_cuda)))

@@ -1,0 +1,6 @@
+(library
+ (name scaling_unbalanced_single_core)
+ (flags :standard -w -69-34)
+ (libraries ctypes ctypes.foreign)
+ (library_flags -linkall)
+ (foreign_stubs (language c) (names scaling_unbalanced_single_core)))
