@@ -14,7 +14,6 @@ bug-reports: "https://github.com/CamaraLab/CAJAL/issues"
 depends: [
   "dune" {>= "3.10"}
   "ocaml"
-  "owl"
   "base"
   "npy"
   "ctypes"

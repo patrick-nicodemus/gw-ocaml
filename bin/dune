@@ -1,5 +1,5 @@
 (executables
  (public_names unbalanced_gw)
  (names main)
- (libraries ugw_futhark)
+ (libraries ugw_futhark scaling_unbalanced_opencl scaling_unbalanced_multicore scaling_unbalanced_cuda scaling_unbalanced_single_core)
  (modes byte exe))

@@ -15,7 +15,7 @@ module Context: sig
   type t
   (** Futhark context *)
 
-  val v: ?debug:bool -> ?log:bool -> ?profile:bool -> ?cache_file:string -> ?auto_sync:bool ->  unit -> t
+  (* val v: ?debug:bool -> ?log:bool -> ?profile:bool -> ?cache_file:string -> ?auto_sync:bool ->  unit -> t *)
   (** Create a new context *)
   
   val sync: t -> unit
