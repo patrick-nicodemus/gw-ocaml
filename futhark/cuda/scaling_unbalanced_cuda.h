@@ -67,23 +67,14 @@ int futhark_free_f64_3d(struct futhark_context *ctx, struct futhark_f64_3d *arr)
 int futhark_values_f64_3d(struct futhark_context *ctx, struct futhark_f64_3d *arr, double *data);
 CUdeviceptr futhark_values_raw_f64_3d(struct futhark_context *ctx, struct futhark_f64_3d *arr);
 const int64_t *futhark_shape_f64_3d(struct futhark_context *ctx, struct futhark_f64_3d *arr);
-struct futhark_i64_1d;
-struct futhark_i64_1d *futhark_new_i64_1d(struct futhark_context *ctx, const int64_t *data, int64_t dim0);
-struct futhark_i64_1d *futhark_new_raw_i64_1d(struct futhark_context *ctx, CUdeviceptr data, int64_t offset, int64_t dim0);
-int futhark_free_i64_1d(struct futhark_context *ctx, struct futhark_i64_1d *arr);
-int futhark_values_i64_1d(struct futhark_context *ctx, struct futhark_i64_1d *arr, int64_t *data);
-CUdeviceptr futhark_values_raw_i64_1d(struct futhark_context *ctx, struct futhark_i64_1d *arr);
-const int64_t *futhark_shape_i64_1d(struct futhark_context *ctx, struct futhark_i64_1d *arr);
 
 // Opaque values
 
 
 
 // Entry points
-int futhark_entry_unbalanced_gw_pairwise(struct futhark_context *ctx, struct futhark_f64_1d **out0, const struct futhark_f64_3d *in0, const double in1, const double in2, const double in3, const double in4, const double in5, const double in6, const double in7);
-int futhark_entry_unbalanced_gw_pairwise_v2(struct futhark_context *ctx, struct futhark_f64_2d **out0, const struct futhark_f64_3d *in0, const double in1, const double in2, const double in3, const double in4, const int32_t in5, const double in6);
-int futhark_entry_unbalanced_gw_parallel_while(struct futhark_context *ctx, struct futhark_f64_1d **out0, const struct futhark_f64_1d *in0, const struct futhark_i64_1d *in1);
-int futhark_entry_unbalanced_gw_total_cost(struct futhark_context *ctx, double *out0, const double in0, const double in1, const double in2, const struct futhark_f64_2d *in3, const struct futhark_f64_1d *in4, const struct futhark_f64_2d *in5, const struct futhark_f64_1d *in6, const double in7, const double in8, const double in9, const double in10);
+int futhark_entry_unbalanced_gw_pairwise(struct futhark_context *ctx, struct futhark_f64_2d **out0, const struct futhark_f64_3d *in0, const double in1, const double in2, const double in3, const double in4, const double in5, const double in6, const double in7);
+int futhark_entry_unbalanced_gw_total_cost(struct futhark_context *ctx, struct futhark_f64_1d **out0, const double in0, const double in1, const double in2, const struct futhark_f64_2d *in3, const struct futhark_f64_1d *in4, const struct futhark_f64_2d *in5, const struct futhark_f64_1d *in6, const double in7, const double in8, const double in9, const double in10);
 
 // Miscellaneous
 int futhark_context_sync(struct futhark_context *ctx);

@@ -1,5 +1,5 @@
 (library
  (name ugw_futhark)
  (flags :standard -warn-error -69-34)
- (libraries ppx_deriving base npy ctypes ctypes.foreign)
+ (libraries ppx_deriving base npy ctypes ctypes.foreign domainslib)
  (library_flags -linkall -cclib -lpthread))

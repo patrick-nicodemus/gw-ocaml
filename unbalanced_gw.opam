@@ -18,6 +18,7 @@ depends: [
   "npy"
   "ctypes"
   "ctypes.foreign"
+  "domainslib"
   "odoc" {with-doc}
 ]
 build: [

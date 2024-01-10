@@ -145,53 +145,10 @@ module Array_f64_1d: sig
   (** Free the array *)
 end
 
-module Array_i64_1d: sig
-  type t
-  (** Futhark array *)
-
-  type kind = (int64, Bigarray.int64_elt) Bigarray.kind
-  (** The Bigarray kind that matches the correct element type for this array *)
-
-  val kind: kind
-
-  val shape: t -> int array
-  (** Array shape *)
-
-  val v: Context.t -> (int64, Bigarray.int64_elt, Bigarray.c_layout) Bigarray.Genarray.t -> t
-  (** Initialize an array with the data from the provided bigarray *)
-
-  val values: t -> (int64, Bigarray.int64_elt, Bigarray.c_layout) Bigarray.Genarray.t -> unit
-  (** Load the values into the provided bigarray *)
-
-  val values_array1: t -> (int64, Bigarray.int64_elt, Bigarray.c_layout) Bigarray.Array1.t -> unit
-  (** Similar to [values] but takes an [Array1] instead of [Genarray] *)
-
-  val get: t -> (int64, Bigarray.int64_elt, Bigarray.c_layout) Bigarray.Genarray.t
-  (** Get a new bigarray with the values loaded *)
-
-  val get_array1: t -> (int64, Bigarray.int64_elt, Bigarray.c_layout) Bigarray.Array1.t
-  (** Similar to [get] but returns an [Array1] *)
-
-  val of_array: Context.t -> int array -> (int64) array -> t
-  (** Create [t] from an array of values *)
-
-  val of_array1: Context.t -> int array ->  (int64, Bigarray.int64_elt, Bigarray.c_layout) Bigarray.Array1.t-> t
-  (** Create [t] from an [Array1] instead of [Genarray] *)
-
-  val free: t -> unit
-  (** Free the array *)
-end
-
 (** Entry point: unbalanced_gw_pairwise *)
-val unbalanced_gw_pairwise: Context.t -> Array_f64_3d.t -> float -> float -> float -> float -> float -> float -> float -> (Array_f64_1d.t)
-
-(** Entry point: unbalanced_gw_pairwise_v2 *)
-val unbalanced_gw_pairwise_v2: Context.t -> Array_f64_3d.t -> float -> float -> float -> float -> int32 -> float -> (Array_f64_2d.t)
-
-(** Entry point: unbalanced_gw_parallel_while *)
-val unbalanced_gw_parallel_while: Context.t -> Array_f64_1d.t -> Array_i64_1d.t -> (Array_f64_1d.t)
+val unbalanced_gw_pairwise: Context.t -> Array_f64_3d.t -> float -> float -> float -> float -> float -> float -> float -> (Array_f64_2d.t)
 
 (** Entry point: unbalanced_gw_total_cost *)
-val unbalanced_gw_total_cost: Context.t -> float -> float -> float -> Array_f64_2d.t -> Array_f64_1d.t -> Array_f64_2d.t -> Array_f64_1d.t -> float -> float -> float -> float -> (float)
+val unbalanced_gw_total_cost: Context.t -> float -> float -> float -> Array_f64_2d.t -> Array_f64_1d.t -> Array_f64_2d.t -> Array_f64_1d.t -> float -> float -> float -> float -> (Array_f64_1d.t)
 
 end

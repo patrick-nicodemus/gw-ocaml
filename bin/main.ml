@@ -9,12 +9,13 @@ let rho1 = !Cli.rho1
 let rho2 = !Cli.rho2
 let eps = !Cli.epsilon
 let file_dir = !Cli.ptcloud_dir
+let file_names = Sys.readdir file_dir
 let output_file = !Cli.output_file
 
 let num_pt_clouds =
   match !Cli.num_pt_clouds with
   | Some n -> n
-  | None -> Array.length (Sys.readdir file_dir)
+  | None -> Array.length file_names
 
 let ctx = M.Context.v
             ~debug:false ~log:false ~profile:false ~auto_sync:false ()
@@ -35,30 +36,33 @@ let () = Printf.printf "%f\n" (Unix.gettimeofday () -. t0)
 let ctr = ref 0
 
 let () =
+  let open Bigarray.Genarray in
   for i = 0 to num_pt_clouds-1 do
     for j = i + 1 to num_pt_clouds-1 do
       let index = vectorform_coords ~n:num_pt_clouds ~i ~j in
-      while Float.is_nan (output.(index)) || output.(index) <= 0.0 do
+      while Float.is_nan (get output [| index; 4 |]) do
         let pt_cloud_1 = M.Array_f64_2d.v ctx
                            (pdist
-                              (Bigarray.Genarray.slice_left pt_cloud_array [| i |] )) in
+                              (slice_left pt_cloud_array [| i |] )) in
         let pt_cloud_2 = M.Array_f64_2d.v ctx
                            (pdist
-                              (Bigarray.Genarray.slice_left pt_cloud_array [| j |] )) in
-        let () = (output.(index) <-
-                    (unbalanced_gw_f64_increasing_eps
+                              (slice_left pt_cloud_array [| j |] )) in
+        let () =
+          blit (unbalanced_gw_f64_increasing_eps
                        ctx rho1 rho2 eps pt_cloud_1 u pt_cloud_2 u
                        ~exp_absorb_cutoff:1.0e10
                        ~tol_dykstra:8.0
                        ~tol_sinkhorn:0.00001
-                       0.00001)) in
-        let () = ctr := !ctr + 1 in
+                       0.00001)
+        (slice_left output [| index |])
+        in
         let () = M.Array_f64_2d.free pt_cloud_1 in
         let () = M.Array_f64_2d.free pt_cloud_2 in
         ()
-        done
+      done;
+      ctr := !ctr + 1 
     done
   done
 
 let () = Printf.printf "%d\n" !ctr
-let () = write_to_file output_file output
+let () = write_to_file output_file num_pt_clouds file_names output

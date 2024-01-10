@@ -1,5 +1,7 @@
 open Bigarray
 
+module T = Domainslib.Task
+
 module Utilities (Scaling_unbalanced : Scaling_unbalanced.Scaling_unbalanced) = struct
 
 let k_of_i ~n ~i =
@@ -76,38 +78,59 @@ let unbalanced_gw_pairwise_f64 ctx pt_cloud_array params =
       params.rho1 params.rho2 params.epsilon params.exp_absorb_cutoff
       params.tol_dykstra params.tol_sinkhorn params.tol_outerloop
   in
-  let output = Genarray.create Float64 c_layout [| m |] in
-  let () = Array_f64_1d.values results output in
-  let return = Array.init m (fun index -> (Genarray.get output [| index |])) in
-  return
-
-type params2 = { rho1 : float; rho2 : float; epsilon : float;
-                 max_cbar_val : float;
-                 inner_count : int;
-                 tol_outerloop : float
-             }
-
-let unbalanced_gw_pairwise_v2 ctx pt_cloud_array params =
-  let open Scaling_unbalanced in
-  let num_pt_clouds = Genarray.nth_dim pt_cloud_array 0 in
-  let m = (num_pt_clouds * (num_pt_clouds-1))/2 in
-  let main_input = Array_f64_3d.v ctx pt_cloud_array in
-  let results =
-    unbalanced_gw_pairwise_v2 ctx main_input
-      params.rho1 params.rho2 params.epsilon params.max_cbar_val
-      (Int32.of_int params.inner_count) params.tol_outerloop
-  in
   let output = Genarray.create Float64 c_layout [| m; 5 |] in
   let () = Array_f64_2d.values results output in
-  let return = Array.init m (fun index -> (Genarray.get output [| index; 4 |])) in
-  return
+  output
+  (* let return = Array.init m (fun index -> (Genarray.get output [| index |])) in *)
+  (* return *)
 
-let write_to_file output_filename arr =
+(* type params2 = { rho1 : float; rho2 : float; epsilon : float; *)
+(*                  max_cbar_val : float; *)
+(*                  inner_count : int; *)
+(*                  tol_outerloop : float *)
+(*              } *)
+
+(* let unbalanced_gw_pairwise_v2 ctx pt_cloud_array params = *)
+(*   let open Scaling_unbalanced in *)
+(*   let num_pt_clouds = Genarray.nth_dim pt_cloud_array 0 in *)
+(*   let m = (num_pt_clouds * (num_pt_clouds-1))/2 in *)
+(*   let main_input = Array_f64_3d.v ctx pt_cloud_array in *)
+(*   let results = *)
+(*     unbalanced_gw_pairwise_v2 ctx main_input *)
+(*       params.rho1 params.rho2 params.epsilon params.max_cbar_val *)
+(*       (Int32.of_int params.inner_count) params.tol_outerloop *)
+(*   in *)
+(*   let output = Genarray.create Float64 c_layout [| m; 5 |] in *)
+(*   let () = Array_f64_2d.values results output in *)
+(*   let return = Array.init m (fun index -> (Genarray.get output [| index; 4 |])) in *)
+(*   return *)
+
+let pairwise_iter n (f : int -> int -> int -> _ ) =
+  for i = 0 to n - 1 do
+    for j = i + 1 to n - 1 do
+      let k = vectorform_coords ~n ~i ~j in
+      f i j k
+    done
+  done
+                     
+
+let write_to_file output_filename num_pt_clouds file_names arr =
   let out_channel = open_out output_filename in
-  Array.iter
-    (fun a -> Printf.fprintf out_channel "%f\n" a) arr
-  ;
-    close_out out_channel
+  let () = Printf.fprintf out_channel "file1,file2,GW_cost,KL1,KL2,QKL,total_cost\n" in
+  let open Genarray in
+  let f i j k =
+    Printf.fprintf out_channel "%s,%s,%f,%f,%f,%f,%f\n"
+      file_names.(i)
+      file_names.(j)
+      (get arr [| k; 0 |])
+      (get arr [| k; 1 |])
+      (get arr [| k; 2 |])
+      (get arr [| k; 3 |])
+      (get arr [| k; 4 |])
+  in
+  pairwise_iter num_pt_clouds f;
+  close_out out_channel  
+
 
 let dist v1 v2 =
   let open Genarray in
@@ -143,12 +166,19 @@ let pdist m =
 let unbalanced_gw_f64_increasing_eps ctx rho1 rho2 (eps: float)
       (x  : Scaling_unbalanced.Array_f64_2d.t) mu y nu
       ~exp_absorb_cutoff ~tol_dykstra ~tol_sinkhorn tol_outerloop =
+  let open Scaling_unbalanced in
   let rec unbalanced_gw_f64_helper ctx rho1 rho2 (eps : float) x mu y nu ~exp_absorb_cutoff ~tol_dykstra ~tol_sinkhorn tol_outerloop =
     let result = Scaling_unbalanced.unbalanced_gw_total_cost
                    ctx rho1 rho2 eps x mu y nu exp_absorb_cutoff
-                   tol_dykstra tol_sinkhorn tol_outerloop in
-        if Float.is_nan result || result <= 0.0 then unbalanced_gw_f64_helper ctx rho1 rho2 (eps *. 1.04) x mu y nu ~exp_absorb_cutoff ~tol_dykstra ~tol_sinkhorn tol_outerloop
-    else result
+                   tol_dykstra tol_sinkhorn tol_outerloop
+               |> Array_f64_1d.get
+    in
+    let () = Context.sync ctx in
+    if Float.is_nan (Genarray.get result [| 4 |]) ||
+         (Genarray.get result [| 4 |]) <= 0.0
+    then unbalanced_gw_f64_helper ctx rho1 rho2 (eps *. 1.04) x mu y nu ~exp_absorb_cutoff ~tol_dykstra ~tol_sinkhorn tol_outerloop
+    else
+      result
   in
   unbalanced_gw_f64_helper ctx rho1 rho2 eps x mu y nu ~exp_absorb_cutoff ~tol_dykstra ~tol_sinkhorn tol_outerloop
  
@@ -167,4 +197,46 @@ let unbalanced_gw_f64_ptclouds ctx filename1 filename2 (params : params) =
       params.tol_outerloop
   in
   return
+
+let pairs n =
+  let m = ((n * (n-1))/2) in
+  let ijs = Array.make m (0,0) in
+  (* let js = Array.make ((n * (n-1))/2) 0 in *)
+  let k = ref 0 in
+  for i = 0 to n - 1 do
+    for j = i + 1 to n - 1 do
+      let () = ijs.(!k) <- (i,j) in
+      k := !k + 1
+    done
+  done;
+  ijs
+
+
+let unbalanced_gw_pairwise_variable_size num_threads ctx_array ~rho1 ~rho2 ~eps
+      (distance_matrices :  ((float, float64_elt, c_layout) Genarray.t) array) =
+  let ijs = pairs (Array.length distance_matrices) in
+  let m = Array.length ijs in
+  let output_array = Genarray.create Float64 c_layout [| m; 5 |] in
+  let pool = T.setup_pool ~num_domains:num_threads () in
+  let open Scaling_unbalanced in
+  let gw_index k =
+    let i, j = ijs.(k) in
+    let ctx = ctx_array.(k) in
+    let icdm1, icdm2 = distance_matrices.(i),distance_matrices.(j) in
+    let icdm1_futhark = Array_f64_2d.v ctx icdm1 in
+    let icdm2_futhark = Array_f64_2d.v ctx icdm2 in
+    let u1 = uniform (Genarray.nth_dim icdm1 0) |> Array_f64_1d.v ctx in
+    let u2 = uniform (Genarray.nth_dim icdm2 0) |> Array_f64_1d.v ctx in
+    let temp_array = Scaling_unbalanced.unbalanced_gw_total_cost ctx
+                       rho1 rho2 eps icdm1_futhark u1 icdm2_futhark u2
+                       1e30 30.0 0.001 0.000001
+    in
+    let () = Context.sync ctx in
+    let () = Array_f64_1d.values temp_array (Genarray.slice_left output_array [| k |]) in
+    Array_f64_1d.free temp_array
+  in
+  (* let res = T.run pool (fun _ -> gw_index n) in *)
+  T.parallel_for pool ~start:0 ~finish:(m-1) ~body:gw_index;
+  output_array
+
 end

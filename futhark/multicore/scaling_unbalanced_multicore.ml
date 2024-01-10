@@ -43,15 +43,8 @@ module Bindings = struct
   let futhark_values_f64_1d = fn "futhark_values_f64_1d" (context @-> array_f64_1d @-> ptr double @-> returning (int))
   let futhark_free_f64_1d = fn "futhark_free_f64_1d" (context @-> array_f64_1d @-> returning (int))
   let futhark_shape_f64_1d = fn "futhark_shape_f64_1d" (context @-> array_f64_1d @-> returning (ptr int64_t))
-  let array_i64_1d = typedef (ptr void) "array_i64_1d"
-  let futhark_new_i64_1d = fn "futhark_new_i64_1d" (context @-> ptr int64_t @-> int64_t @-> returning (array_i64_1d))
-  let futhark_values_i64_1d = fn "futhark_values_i64_1d" (context @-> array_i64_1d @-> ptr int64_t @-> returning (int))
-  let futhark_free_i64_1d = fn "futhark_free_i64_1d" (context @-> array_i64_1d @-> returning (int))
-  let futhark_shape_i64_1d = fn "futhark_shape_i64_1d" (context @-> array_i64_1d @-> returning (ptr int64_t))
-  let futhark_entry_unbalanced_gw_pairwise = fn "futhark_entry_unbalanced_gw_pairwise" (context @-> ptr array_f64_1d @-> array_f64_3d @-> double @-> double @-> double @-> double @-> double @-> double @-> double @-> returning (int))
-  let futhark_entry_unbalanced_gw_pairwise_v2 = fn "futhark_entry_unbalanced_gw_pairwise_v2" (context @-> ptr array_f64_2d @-> array_f64_3d @-> double @-> double @-> double @-> double @-> int32_t @-> double @-> returning (int))
-  let futhark_entry_unbalanced_gw_parallel_while = fn "futhark_entry_unbalanced_gw_parallel_while" (context @-> ptr array_f64_1d @-> array_f64_1d @-> array_i64_1d @-> returning (int))
-  let futhark_entry_unbalanced_gw_total_cost = fn "futhark_entry_unbalanced_gw_total_cost" (context @-> ptr double @-> double @-> double @-> double @-> array_f64_2d @-> array_f64_1d @-> array_f64_2d @-> array_f64_1d @-> double @-> double @-> double @-> double @-> returning (int))
+  let futhark_entry_unbalanced_gw_pairwise = fn "futhark_entry_unbalanced_gw_pairwise" (context @-> ptr array_f64_2d @-> array_f64_3d @-> double @-> double @-> double @-> double @-> double @-> double @-> double @-> returning (int))
+  let futhark_entry_unbalanced_gw_total_cost = fn "futhark_entry_unbalanced_gw_total_cost" (context @-> ptr array_f64_1d @-> double @-> double @-> double @-> array_f64_2d @-> array_f64_1d @-> array_f64_2d @-> array_f64_1d @-> double @-> double @-> double @-> double @-> returning (int))
 end
 
 type error =
@@ -384,111 +377,17 @@ module Array_f64_1d = struct
 end
 
 
-module Array_i64_1d = struct
-  type t = futhark_array
-
-  type kind = (int64, Bigarray.int64_elt) Bigarray.kind
-  
-  let kind = Bigarray.int64
-
-  let free t =
-    if not t.array_free && not t.ctx.Context.context_free then
-      let () = ignore (Bindings.futhark_free_i64_1d t.ctx.Context.handle t.ptr) in
-      t.array_free <- true
-
-  let cast x =
-    coerce (ptr void) (ptr int64_t) (to_voidp x)
-  
-  let v ctx ba =
-    check_use_after_free `context ctx.Context.context_free;
-    let dims = Genarray.dims ba in
-    let ptr = Bindings.futhark_new_i64_1d ctx.Context.handle (cast @@ bigarray_start genarray ba) (Int64.of_int dims.(0)) in
-    if is_null ptr then raise (Error NullPtr);
-    Context.auto_sync ctx;
-    let t = { ptr; ctx; shape = dims; array_free = false } in
-    Gc.finalise free t; t
-
-  let values t ba =
-    check_use_after_free `context t.ctx.Context.context_free;
-    check_use_after_free `array t.array_free;
-    let dims = Genarray.dims ba in
-    let a = Array.fold_left ( * ) 1 t.shape in
-    let b = Array.fold_left ( * ) 1 dims in
-    if (a <> b) then raise (Error (InvalidShape (a, b)));
-    let rc = Bindings.futhark_values_i64_1d t.ctx.Context.handle t.ptr (cast @@ bigarray_start genarray ba) in
-    Context.auto_sync t.ctx;
-    if rc <> 0 then raise (Error (Code rc))
-
-  let values_array1 t ba =
-    let ba = genarray_of_array1 ba in
-    let ba = reshape ba t.shape in
-    values t ba
-
-  let get t =
-    let dims = t.shape in
-    let g = Genarray.create kind C_layout dims in
-    values t g;
-    g
-
-  let get_array1 t =
-    let len = Array.fold_left ( * ) 1 t.shape in
-    let g = Array1.create kind C_layout len in
-    values_array1 t g;
-    g
-
-  let shape t = t.shape
-
-  let of_array1 ctx dims arr =
-    let len = Array.fold_left ( * ) 1 dims in
-    assert (len = Array1.dim arr);
-    let g = genarray_of_array1 arr in
-    let g = reshape g dims in
-    v ctx g
-
-  let of_array ctx dims arr =
-    let arr = Array1.of_array kind C_layout arr in
-    of_array1 ctx dims arr
-
-  let ptr_shape ctx ptr =
-    let s = Bindings.futhark_shape_i64_1d ctx ptr in
-    Array.init 1 (fun i -> Int64.to_int !@ (s +@ i))
-
-  let of_ptr ctx ptr =
-    check_use_after_free `context ctx.Context.context_free;
-    if is_null ptr then raise (Error NullPtr);
-    let shape = ptr_shape ctx.Context.handle ptr in
-    let t = { ptr; ctx; shape; array_free = false } in
-    Gc.finalise free t; t
-    
-  let _ = of_ptr
-end
-
-
 let unbalanced_gw_pairwise ctx input0 input1 input2 input3 input4 input5 input6 input7 =
   check_use_after_free `context ctx.Context.context_free;
   let out_ptr = allocate (ptr void) null in
   let rc = Bindings.futhark_entry_unbalanced_gw_pairwise ctx.Context.handle out_ptr input0.ptr input1 input2 input3 input4 input5 input6 input7 in
   if rc <> 0 then raise (Error (Code rc));
-  ((Array_f64_1d.of_ptr ctx !@out_ptr))
-
-let unbalanced_gw_pairwise_v2 ctx input0 input1 input2 input3 input4 input5 input6 =
-  check_use_after_free `context ctx.Context.context_free;
-  let out_ptr = allocate (ptr void) null in
-  let rc = Bindings.futhark_entry_unbalanced_gw_pairwise_v2 ctx.Context.handle out_ptr input0.ptr input1 input2 input3 input4 input5 input6 in
-  if rc <> 0 then raise (Error (Code rc));
   ((Array_f64_2d.of_ptr ctx !@out_ptr))
-
-let unbalanced_gw_parallel_while ctx input0 input1 =
-  check_use_after_free `context ctx.Context.context_free;
-  let out_ptr = allocate (ptr void) null in
-  let rc = Bindings.futhark_entry_unbalanced_gw_parallel_while ctx.Context.handle out_ptr input0.ptr input1.ptr in
-  if rc <> 0 then raise (Error (Code rc));
-  ((Array_f64_1d.of_ptr ctx !@out_ptr))
 
 let unbalanced_gw_total_cost ctx input0 input1 input2 input3 input4 input5 input6 input7 input8 input9 input10 =
   check_use_after_free `context ctx.Context.context_free;
-  let out_ptr = allocate_n double ~count:1 in
+  let out_ptr = allocate (ptr void) null in
   let rc = Bindings.futhark_entry_unbalanced_gw_total_cost ctx.Context.handle out_ptr input0 input1 input2 input3.ptr input4.ptr input5.ptr input6.ptr input7 input8 input9 input10 in
   if rc <> 0 then raise (Error (Code rc));
-  (!@out_ptr)
+  ((Array_f64_1d.of_ptr ctx !@out_ptr))
 

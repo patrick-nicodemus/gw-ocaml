@@ -776,7 +776,7 @@ module unbalanced_gw (M : real) = {
       unbalanced_gw rho1 rho2 eps X mu Y nu
 		    {exp_absorb_cutoff, tol_dykstra, tol_sinkhorn} tol_outerloop
     in
-    UGW_eps eps rho1 rho2 X mu Y nu P
+    UGW_cost_arr eps rho1 rho2 X mu Y nu P
 
   def unbalanced_gw_pairwise [m][n][d] (pt_clouds: [m][n][d]t) rho1 rho2 eps
     exp_absorb_cutoff tol_dykstra tol_sinkhorn tol_outerloop =
@@ -809,5 +809,3 @@ module unbalanced_gw64 = unbalanced_gw f64
 
 entry unbalanced_gw_total_cost = unbalanced_gw64.unbalanced_gw_total_cost
 entry unbalanced_gw_pairwise = unbalanced_gw64.unbalanced_gw_pairwise
-entry unbalanced_gw_pairwise_v2 = unbalanced_gw64.unbalanced_gw_pairwise_v2
-entry unbalanced_gw_parallel_while = unbalanced_gw64.parallel_while_test
